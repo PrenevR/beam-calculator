@@ -301,8 +301,8 @@ export default function ResultsViewer({ result, beam }: Props) {
                         {xAxisEl}
                         <YAxis stroke={axisColor} tick={yAxisTick} tickFormatter={(v: number) => (v / 1000).toFixed(1) + 'k'} />
                         <Tooltip contentStyle={TOOLTIP_STYLE}
-                            formatter={(v: number) => [displayForce(v, u), 'V(x)']}
-                            labelFormatter={(v: number) => `x = ${v.toFixed(3)} m`} />
+                            formatter={(v: number | undefined) => [v !== undefined ? displayForce(v, u) : '0', 'V(x)']}
+                            labelFormatter={(v: any) => typeof v === 'number' ? `x = ${v.toFixed(3)} m` : `x = ${v}`} />
                         <ReferenceLine y={0} stroke={axisColor} strokeWidth={1.5} />
                         <Area type="stepAfter" dataKey="value" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.18} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                     </AreaChart>
@@ -333,8 +333,8 @@ export default function ResultsViewer({ result, beam }: Props) {
                         {xAxisEl}
                         <YAxis stroke={axisColor} tick={yAxisTick} tickFormatter={(v: number) => (v / 1000).toFixed(1) + 'k'} />
                         <Tooltip contentStyle={TOOLTIP_STYLE}
-                            formatter={(v: number) => [displayMoment(v, u), 'M(x)']}
-                            labelFormatter={(v: number) => `x = ${v.toFixed(3)} m`} />
+                            formatter={(v: number | undefined) => [v !== undefined ? displayMoment(v, u) : '0', 'M(x)']}
+                            labelFormatter={(v: any) => typeof v === 'number' ? `x = ${v.toFixed(3)} m` : `x = ${v}`} />
                         <ReferenceLine y={0} stroke={axisColor} strokeWidth={1.5} />
                         <Area type="monotone" dataKey="value" stroke="#a855f7" fill="#a855f7" fillOpacity={0.18} strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                     </AreaChart>
@@ -365,8 +365,8 @@ export default function ResultsViewer({ result, beam }: Props) {
                         {xAxisEl}
                         <YAxis stroke={axisColor} tick={yAxisTick} tickFormatter={(v: number) => (v * 1000).toFixed(2) + 'mm'} />
                         <Tooltip contentStyle={TOOLTIP_STYLE}
-                            formatter={(v: number) => [displayDeflection(v, u), 'y(x)']}
-                            labelFormatter={(v: number) => `x = ${v.toFixed(3)} m`} />
+                            formatter={(v: number | undefined) => [v !== undefined ? displayDeflection(v, u) : '0', 'y(x)']}
+                            labelFormatter={(v: any) => typeof v === 'number' ? `x = ${v.toFixed(3)} m` : `x = ${v}`} />
                         <ReferenceLine y={0} stroke={axisColor} strokeWidth={1.5} />
                         <Line type="monotone" dataKey="value" stroke="#22c55e" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                     </LineChart>
@@ -382,7 +382,7 @@ export default function ResultsViewer({ result, beam }: Props) {
                     minPosition: result.slope.find(s => s.value === Math.min(...result.slope.map(x => x.value)))?.x ?? 0,
                     zeroCrossings: [],
                     summary: `Maximum slope magnitude = ${(Math.max(...result.slope.map(s => Math.abs(s.value))) * 1000).toFixed(4)} mrad. Zero slope at location of peak deflection.`
-                }}
+                } as ChartInference}
                 methodPoints={[
                     'θ(x) = dy/dx = first integral of M(x)/EI',
                     'For simply supported beams: maximum slope at both support ends',
@@ -402,8 +402,8 @@ export default function ResultsViewer({ result, beam }: Props) {
                         {xAxisEl}
                         <YAxis stroke={axisColor} tick={yAxisTick} tickFormatter={(v: number) => (v * 1000).toFixed(3)} />
                         <Tooltip contentStyle={TOOLTIP_STYLE}
-                            formatter={(v: number) => [(v * 1000).toFixed(6) + ' mrad', 'θ(x)']}
-                            labelFormatter={(v: number) => `x = ${v.toFixed(3)} m`} />
+                            formatter={(v: number | undefined) => [v !== undefined ? (v * 1000).toFixed(6) + ' mrad' : '0', 'θ(x)']}
+                            labelFormatter={(v: any) => typeof v === 'number' ? `x = ${v.toFixed(3)} m` : `x = ${v}`} />
                         <ReferenceLine y={0} stroke={axisColor} strokeWidth={1.5} />
                         <Line type="monotone" dataKey="value" stroke="#f59e0b" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                     </LineChart>
@@ -420,13 +420,20 @@ export default function ResultsViewer({ result, beam }: Props) {
                         minPosition: result.angleOfTwist.find(d => d.value === Math.min(...result.angleOfTwist.map(x => x.value)))?.x ?? 0,
                         zeroCrossings: [],
                         summary: `Maximum angle of twist = ${result.maxAngleOfTwist.toFixed(6)} rad = ${(result.maxAngleOfTwist * 180 / Math.PI).toFixed(3)}°. Boundary: φ=0 at torsional restraint.`
-                    }}
+                    } as ChartInference}
                     methodPoints={[
                         'φ(x) = ∫₀ˣ T(ξ)/(GJ) dξ',
                         'T(x) = internal torque (computed from applied torques)',
                         'G = shear modulus, J = polar moment of inertia',
-                        'Boundary condition: φ = 0 at fixed torsional support',
+                        'Boundary condition: φ = 0 at torsional restraint',
                         'Analogous to beam bending: twist is to torque as deflection is to bending moment',
+                    ]}
+                    relevancePoints={[
+                        '🔄 Torsional rigidity is critical for long-span beams with eccentric loads to prevent twisting-induced instability',
+                        '⚙️ Angular precision in rotating shafts depends on limiting φ — crucial for machinery and power transmission',
+                        '📐 Boundary conditions (φ=0) must be carefully modeled to reflect actual physical restraints at the supports',
+                        '🏗️ In structural steel, I-beams are weak in torsion compared to box sections; φ diagrams highlight this vulnerability',
+                        '🔬 Verification of G and J properties can be done by comparing measured twist angles with calculated φ(x)',
                     ]}>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={twistData} margin={{ top: 8, right: 20, bottom: 24, left: 10 }}>
@@ -434,8 +441,8 @@ export default function ResultsViewer({ result, beam }: Props) {
                             {xAxisEl}
                             <YAxis stroke={axisColor} tick={yAxisTick} tickFormatter={(v: number) => (v * 180 / Math.PI).toFixed(2) + '°'} />
                             <Tooltip contentStyle={TOOLTIP_STYLE}
-                                formatter={(v: number) => [`${(v * 180 / Math.PI).toFixed(4)}° (${v.toFixed(6)} rad)`, 'φ(x)']}
-                                labelFormatter={(v: number) => `x = ${v.toFixed(3)} m`} />
+                                formatter={(v: number | undefined) => [v !== undefined ? `${(v * 180 / Math.PI).toFixed(4)}° (${v.toFixed(6)} rad)` : '0', 'φ(x)']}
+                                labelFormatter={(v: any) => typeof v === 'number' ? `x = ${v.toFixed(3)} m` : `x = ${v}`} />
                             <ReferenceLine y={0} stroke={axisColor} strokeWidth={1.5} />
                             <Line type="monotone" dataKey="value" stroke="#06b6d4" strokeWidth={2.5} dot={false} activeDot={{ r: 4 }} />
                         </LineChart>

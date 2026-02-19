@@ -406,7 +406,7 @@ function getTotalLoads(loads: Load[], fixedPos: number, steps: SolverStep[]): { 
     return { sumFy, sumM };
 }
 
-const solveReactions = (beam: BeamConfig, steps: SolverStep[]) => {
+const solveReactions = (beam: BeamConfig, steps: SolverStep[]): { reactions: AnalysisResult['reactions'] } => {
     const { supports, loads } = beam;
     const sorted = [...supports].sort((a, b) => a.position - b.position);
     const fixed = sorted.find(s => s.type === 'fixed');
