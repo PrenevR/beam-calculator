@@ -68,7 +68,7 @@ function Marker({ id, color }: { id: string; color: string }) {
     );
 }
 
-function PointArrow({ x, beamY, magnitude }: { x: number; beamY: number; magnitude: number }) {
+function PointArrow({ x, beamY }: { x: number; beamY: number; magnitude: number }) {
     const c = COLORS.point, id = `pa${Math.abs(Math.round(x * 10))}`;
     const tip = beamY - BEAM_H / 2, tail = tip - 55;
     return (
