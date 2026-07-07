@@ -8,9 +8,12 @@ export interface Support {
     position: number; // x-coordinate in base units (m or ft)
 }
 
+export type LoadCategory = 'dead' | 'live' | 'wind' | 'roof' | 'rain' | 'snow' | 'seismic';
+
 export interface Hinge {
     id: string;
     position: number; // x-coordinate (internal moment release)
+    label?: string;   // Optional user label
 }
 
 export interface Load {
@@ -21,6 +24,7 @@ export interface Load {
     endMagnitude?: number; // For UVL end magnitude
     endPosition?: number;  // For UDL / UVL span end
     label?: string;        // Optional user label
+    category?: LoadCategory; // Load category
     combinationId?: string; // Link to a load combination
 }
 
@@ -150,4 +154,28 @@ export function displayStress(val: number, u: UnitConfig): string {
 export function displayLength(val: number, u: UnitConfig): string {
     if (u.system === 'Imperial') return (val * 3.28084).toFixed(3) + ' ft';
     return val.toFixed(3) + ' m';
+}
+
+export function toLatexExp(val: number, fractionDigits = 2): string {
+    if (val === 0) return '0';
+    const log10 = Math.log10(Math.abs(val));
+    const log10Approx = Math.round(log10);
+    if (Math.abs(log10 - log10Approx) < 1e-12 && Math.abs(log10Approx) >= 1) {
+        const sign = val < 0 ? '-' : '';
+        return `${sign}10^{${log10Approx}}`;
+    }
+    const expStr = val.toExponential(fractionDigits);
+    const parts = expStr.split('e');
+    if (parts.length === 2) {
+        let base = parts[0];
+        let exponent = parts[1];
+        const expNum = parseInt(exponent, 10);
+        if (expNum === 0) return base;
+        if (parseFloat(base) === 1) {
+            const sign = val < 0 ? '-' : '';
+            return `${sign}10^{${expNum}}`;
+        }
+        return `${base} \\times 10^{${expNum}}`;
+    }
+    return val.toString();
 }

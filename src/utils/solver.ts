@@ -1,9 +1,16 @@
 import type {
     BeamConfig, Load, AnalysisResult, SolverStep, ChartInference
 } from './types';
-import { displayForce, displayMoment, displayLength, displayDeflection } from './types';
+import { displayForce, displayMoment, displayLength, displayDeflection, toLatexExp } from './types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+function displayStressLaTeX(val: number, system: string): string {
+    if (system === 'kNm') return `${(val / 1e6).toFixed(2)}\\text{ MPa}`;
+    if (system === 'Imperial') return `${(val * 0.000145).toFixed(1)}\\text{ psi}`;
+    return `${val.toFixed(0)}\\text{ Pa}`;
+}
+
 
 function computeChartInference(
     data: { x: number; value: number }[],
@@ -38,49 +45,66 @@ function computeChartInference(
 
 // ─── Main Solver ─────────────────────────────────────────────────────────────
 
-export const solveBeam = (beam: BeamConfig): AnalysisResult => {
+const solveBeamInternal = (beam: BeamConfig, generateSteps: boolean = true): AnalysisResult => {
     const steps: SolverStep[] = [];
     const u = beam.units;
 
     // ── Step 0: Problem Setup ──
-    steps.push({
-        title: '0. Problem Setup',
-        description: `Beam length L = ${beam.length} m.\n` +
-            `Material: E = ${(beam.E / 1e9).toFixed(0)} GPa, G = ${(beam.G / 1e9).toFixed(0)} GPa.\n` +
-            `Section: I = ${beam.I.toExponential(2)} m⁴, J = ${beam.J.toExponential(2)} m⁴, depth = ${beam.depth} m.\n` +
-            `Gravity: g = ${beam.gravity} m/s².`,
-        equations: [
-            `L = ${beam.length} m`,
-            `E = ${beam.E.toExponential(2)} Pa`,
-            `I = ${beam.I.toExponential(2)} m⁴`,
-        ],
-        result: `Beam classified as: ${classifyBeam(beam)}`
-    });
+    if (generateSteps) {
+        steps.push({
+            title: '0. Problem Setup',
+            description: `Beam length $L = ${beam.length}\\text{ m}$.\n` +
+                `Material properties: $E = ${(beam.E / 1e9).toFixed(0)}\\text{ GPa}$ (Young's modulus), $G = ${(beam.G / 1e9).toFixed(0)}\\text{ GPa}$ (shear modulus).\n` +
+                `Section: $I = ${toLatexExp(beam.I, 2)}\\text{ m}^4$ (second moment of area), $J = ${toLatexExp(beam.J, 2)}\\text{ m}^4$ (polar moment), depth $d = ${beam.depth}\\text{ m}$.\n` +
+                `Gravity: $g = ${beam.gravity}\\text{ m/s}^2$.`,
+            equations: [
+                `L = ${beam.length}\\text{ m}`,
+                `E = ${toLatexExp(beam.E, 2)}\\text{ Pa}`,
+                `I = ${toLatexExp(beam.I, 2)}\\text{ m}^4`,
+            ],
+            result: `Beam classified as: ${classifyBeam(beam)}`
+        });
+    }
 
     // ── Step 1: Load Summary ──
     const loadLines = beam.loads.map(l => {
-        if (l.type === 'point') return `  • Point Load: P = ${displayForce(l.magnitude, u)} at x = ${displayLength(l.position, u)}`;
-        if (l.type === 'udl') return `  • UDL: w = ${l.magnitude} N/m from x = ${displayLength(l.position, u)} to ${displayLength(l.endPosition ?? beam.length, u)}`;
-        if (l.type === 'uvl') return `  • UVL: w₁ = ${l.magnitude} N/m → w₂ = ${l.endMagnitude ?? 0} N/m from x = ${displayLength(l.position, u)} to ${displayLength(l.endPosition ?? beam.length, u)}`;
-        if (l.type === 'moment') return `  • Applied Moment: M = ${displayMoment(l.magnitude, u)} at x = ${displayLength(l.position, u)}`;
-        if (l.type === 'torque') return `  • Torque: T = ${displayMoment(l.magnitude, u)} at x = ${displayLength(l.position, u)}`;
+        const catStr = l.category ? ` (${l.category})` : '';
+        const lblStr = l.label ? ` "${l.label}"` : '';
+        const namePart = `${lblStr}${catStr}`;
+
+        if (l.type === 'point') return `  • **Point Load${namePart}**: $P = ${displayForce(l.magnitude, u)}$ at $x = ${displayLength(l.position, u)}$`;
+        if (l.type === 'udl') return `  • **UDL${namePart}**: $w = ${l.magnitude}\\text{ N/m}$ from $x = ${displayLength(l.position, u)}$ to $x = ${displayLength(l.endPosition ?? beam.length, u)}$`;
+        if (l.type === 'uvl') return `  • **UVL${namePart}**: $w_1 = ${l.magnitude}\\text{ N/m} \\to w_2 = ${l.endMagnitude ?? 0}\\text{ N/m}$ from $x = ${displayLength(l.position, u)}$ to $x = ${displayLength(l.endPosition ?? beam.length, u)}$`;
+        if (l.type === 'moment') return `  • **Applied Moment${namePart}**: $M = ${displayMoment(l.magnitude, u)}$ at $x = ${displayLength(l.position, u)}$`;
+        if (l.type === 'torque') return `  • **Torque${namePart}**: $T = ${displayMoment(l.magnitude, u)}$ at $x = ${displayLength(l.position, u)}$`;
         return '';
     });
-    steps.push({
-        title: '1. Applied Loads',
-        description: `${beam.loads.length} load(s) applied:\n${loadLines.join('\n')}`,
-        equations: beam.loads.map(l => l.type === 'point'
-            ? `P = ${l.magnitude.toFixed(2)} N @ x=${l.position.toFixed(2)} m`
-            : l.type === 'udl'
-                ? `w = ${l.magnitude.toFixed(2)} N/m [${l.position.toFixed(2)} → ${(l.endPosition ?? beam.length).toFixed(2)} m]`
-                : l.type === 'uvl'
-                    ? `w(x) = ${l.magnitude.toFixed(2)} + ${((l.endMagnitude ?? 0) - l.magnitude).toFixed(2)}·(x−${l.position.toFixed(2)})/${((l.endPosition ?? beam.length) - l.position).toFixed(2)} N/m`
-                    : `M = ${l.magnitude.toFixed(2)} N·m @ x=${l.position.toFixed(2)} m`
-        )
-    });
+    if (generateSteps) {
+        steps.push({
+            title: '1. Applied Loads',
+            description: `${beam.loads.length} load(s) applied:\n${loadLines.join('\n')}`,
+            equations: beam.loads.map(l => {
+                const name = l.label ? `\\text{"${l.label}"}` : (l.category ? `\\text{${l.category} load}` : `\\text{${l.type}}`);
+                if (l.type === 'point') {
+                    return `${name}: \\quad P = ${l.magnitude.toFixed(2)}\\text{ N} \\quad \\text{at } x = ${l.position.toFixed(2)}\\text{ m}`;
+                } else if (l.type === 'udl') {
+                    return `${name}: \\quad w = ${l.magnitude.toFixed(2)}\\text{ N/m} \\quad \\text{for } x \\in [${l.position.toFixed(2)}, ${(l.endPosition ?? beam.length).toFixed(2)}]\\text{ m}`;
+                } else if (l.type === 'uvl') {
+                    const w1 = l.magnitude;
+                    const w2 = l.endMagnitude ?? 0;
+                    const L = (l.endPosition ?? beam.length) - l.position;
+                    return `${name}: \\quad w(x) = ${w1.toFixed(2)} + \\frac{${(w2 - w1).toFixed(2)}(x - ${l.position.toFixed(2)})}{${L.toFixed(2)}}\\text{ N/m} \\quad \\text{for } x \\in [${l.position.toFixed(2)}, ${(l.endPosition ?? beam.length).toFixed(2)}]\\text{ m}`;
+                } else if (l.type === 'moment') {
+                    return `${name}: \\quad M = ${l.magnitude.toFixed(2)}\\text{ N}\\cdot\\text{m} \\quad \\text{at } x = ${l.position.toFixed(2)}\\text{ m}`;
+                } else {
+                    return `${name}: \\quad T = ${l.magnitude.toFixed(2)}\\text{ N}\\cdot\\text{m} \\quad \\text{at } x = ${l.position.toFixed(2)}\\text{ m}`;
+                }
+            })
+        });
+    }
 
     // ── Step 2: Reactions ──
-    const reactionResult = solveReactions(beam, steps);
+    const reactionResult = solveReactions(beam, generateSteps ? steps : []);
     const { reactions } = reactionResult;
 
     // ── Build effective load list (reactions added as upward point loads) ──
@@ -150,56 +174,59 @@ export const solveBeam = (beam: BeamConfig): AnalysisResult => {
         if (Math.abs(M_val) > maxBM) maxBM = Math.abs(M_val);
     }
 
-    steps.push({
-        title: '3. Shear Force Diagram (SFD)',
-        description: `The Shear Force V(x) is computed by summing all vertical forces to the LEFT of a section cut at position x:\n\n` +
-            `  V(x) = Σ [Reaction forces to left of x] − Σ [Applied loads to left of x]\n\n` +
-            `For each load type:\n` +
-            `  • Point Load P at a: V jumps by +P (upward) or −P (downward)\n` +
-            `  • UDL w [a,b]: V decreases linearly at rate w N/m\n` +
-            `  • UVL w₁→w₂ [a,b]: V decreases parabolically\n\n` +
-            `Maximum |V| = ${displayForce(maxSF, u)}`,
-        equations: [
-            `V(x) = ΣFᵧ(left of x)`,
-            `For UDL: V(x) = V₀ − w·(x−a)`,
-            `|V|_max = ${maxSF.toFixed(2)} N`,
-        ],
-        result: `SFD computed over ${points + 1} points, dx = ${dx.toFixed(4)} m`
-    });
-
-    steps.push({
-        title: '4. Bending Moment Diagram (BMD)',
-        description: `The Bending Moment M(x) is computed by taking moments of all forces to the LEFT of section cut x:\n\n` +
-            `  M(x) = Σ [Reaction moments] + Σ [Force × lever arm]\n\n` +
-            `Convention: Sagging moment (bottom tension) = Positive.\n\n` +
-            `Maximum |M| = ${displayMoment(maxBM, u)}\n` +
-            `Location of max moment is at x where V = 0 (shear changes sign).`,
-        equations: [
-            `M(x) = Σ Fᵢ·(x − xᵢ)  [for all forces left of x]`,
-            `dM/dx = V(x)  ←→  M = ∫V dx`,
-            `|M|_max = ${maxBM.toFixed(2)} N·m`,
-        ],
-        result: `BMD computed simultaneously with SFD`
-    });
-
-    // ── Bending Stress ──
     const maxStress = (maxBM * (beam.depth / 2)) / beam.I;
 
-    steps.push({
-        title: '5. Bending Stress',
-        description: `Using the flexure formula σ = M·y / I:\n\n` +
-            `  y (distance from neutral axis) = depth/2 = ${(beam.depth / 2).toFixed(3)} m\n` +
-            `  M_max = ${displayMoment(maxBM, u)}\n` +
-            `  I = ${beam.I.toExponential(3)} m⁴\n\n` +
-            `  σ_max = M_max × y / I\n` +
-            `  σ_max = ${maxBM.toFixed(2)} × ${(beam.depth / 2).toFixed(3)} / ${beam.I.toExponential(3)}`,
-        equations: [
-            `σ = M·y / I  (Flexure Formula)`,
-            `σ_max = ${maxBM.toFixed(2)} × ${(beam.depth / 2).toFixed(3)} / ${beam.I.toExponential(2)}`,
-            `σ_max = ${displayStressRaw(maxStress, beam.units.system)}`,
-        ],
-        result: `Maximum bending stress = ${displayStressRaw(maxStress, beam.units.system)}`
-    });
+    if (generateSteps) {
+        steps.push({
+            title: '3. Shear Force Diagram (SFD)',
+            description: `The Shear Force $V(x)$ is computed by summing all vertical forces to the left of a section cut at position $x$:\n\n` +
+                `$$V(x) = \\sum R_{y,\\text{left}} - \\sum P_{\\text{left}}$$\n\n` +
+                `For each load type:\n` +
+                `  • Concentrated force $P$ at $a$: $V$ jumps by $+P$ (upward) or $-P$ (downward)\n` +
+                `  • UDL $w$ on $[a,b]$: $V$ decreases linearly at rate $w\\text{ N/m}$\n` +
+                `  • UVL $w_1 \\to w_2$ on $[a,b]$: $V$ decreases parabolically\n\n` +
+                `Maximum shear magnitude: $|V|_{\\text{max}} = ${displayForce(maxSF, u)}`,
+            equations: [
+                `V(x) = \\Sigma F_y \\text{ (forces to the left of } x\\text{)}`,
+                `\\text{UDL region: } V(x) = V_0 - w(x - a)`,
+                `|V|_{\\text{max}} = ${maxSF.toFixed(1)}\\text{ N}`,
+            ],
+            result: `SFD computed over ${points + 1} points, dx = ${dx.toFixed(4)} m`
+        });
+
+        steps.push({
+            title: '4. Bending Moment Diagram (BMD)',
+            description: `The Bending Moment $M(x)$ is computed by taking moments of all forces to the left of section cut $x$:\n\n` +
+                `$$M(x) = \\sum M_{\\text{react,left}} + \\sum [F_i \\cdot (x - x_i)]$$\n\n` +
+                `Sign Convention: Sagging moment (bottom face in tension) is positive.\n\n` +
+                `Maximum moment magnitude: $|M|_{\\text{max}} = ${displayMoment(maxBM, u)}$\n` +
+                `The maximum bending moment occurs where shear force $V(x) = 0$ (or changes sign).`,
+            equations: [
+                `M(x) = \\sum F_i(x - x_i) \\text{ for } x_i \\le x`,
+                `\\frac{dM}{dx} = V(x) \\iff M(x) = \\int V(x)\\,dx`,
+                `|M|_{\\text{max}} = ${maxBM.toFixed(1)}\\text{ N}\\cdot\\text{m}`,
+            ],
+            result: `BMD computed simultaneously with SFD`
+        });
+
+        steps.push({
+            title: '5. Bending Stress',
+            description: `Bending stress $\\sigma$ is calculated using the elastic flexure formula:\n\n` +
+                `$$\\sigma = \\frac{M \\cdot y}{I}$$\n\n` +
+                `Where:\n` +
+                `  • $y$ (distance from neutral axis to extreme fibres) $= d/2 = ${(beam.depth / 2).toFixed(3)}\\text{ m}$\n` +
+                `  • $M_{\\text{max}} = ${displayMoment(maxBM, u)}$\n` +
+                `  • $I = ${toLatexExp(beam.I, 3)}\\text{ m}^4$\n\n` +
+                `Maximum bending stress:\n` +
+                `$$\\sigma_{\\text{max}} = \\frac{${maxBM.toFixed(1)} \\times ${(beam.depth / 2).toFixed(3)}}{${toLatexExp(beam.I, 3)}} = ${displayStressRaw(maxStress, beam.units.system)}$$`,
+            equations: [
+                `\\sigma = \\frac{M \\cdot y}{I} \\quad \\text{(Flexure Formula)}`,
+                `\\sigma_{\\text{max}} = \\frac{${maxBM.toFixed(1)}\\text{ N}\\cdot\\text{m} \\times ${(beam.depth / 2).toFixed(3)}\\text{ m}}{${toLatexExp(beam.I, 2)}\\text{ m}^4}`,
+                `\\sigma_{\\text{max}} = ${displayStressLaTeX(maxStress, beam.units.system)}`,
+            ],
+            result: `Maximum bending stress = ${displayStressRaw(maxStress, beam.units.system)}`
+        });
+    }
 
     // ── Torsion ──
     const torqueLoads = beam.loads.filter(l => l.type === 'torque');
@@ -216,17 +243,20 @@ export const solveBeam = (beam: BeamConfig): AnalysisResult => {
 
         let phi = 0;
         const GJ = beam.G * beam.J;
-        steps.push({
-            title: '6. Torsion & Angle of Twist',
-            description: `Torque loads detected. Angle of twist φ(x) computed by integrating T(x)/(GJ):\n\n` +
-                `  G = ${(beam.G / 1e9).toFixed(0)} GPa, J = ${beam.J.toExponential(3)} m⁴\n` +
-                `  GJ = ${GJ.toExponential(3)} N·m²\n\n` +
-                `  φ(x) = ∫₀ˣ T(ξ)/(GJ) dξ`,
-            equations: [
-                `φ(x) = ∫₀ˣ T/(GJ) dξ`,
-                `GJ = ${GJ.toExponential(3)} N·m²`,
-            ]
-        });
+        if (generateSteps) {
+            steps.push({
+                title: '6. Torsion & Angle of Twist',
+                description: `Torque loads detected. The angle of twist $\\phi(x)$ is computed by integrating the torsional equation:\n\n` +
+                    `$$\\phi(x) = \\int_0^x \\frac{T(\\xi)}{G J}\\,d\\xi$$\n\n` +
+                    `Where:\n` +
+                    `  • $G = ${(beam.G / 1e9).toFixed(0)}\\text{ GPa}$, $J = ${toLatexExp(beam.J, 3)}\\text{ m}^4$\n` +
+                    `  • Torsional rigidity $G J = ${toLatexExp(GJ, 3)}\\text{ N}\\cdot\\text{m}^2$`,
+                equations: [
+                    `\\phi(x) = \\int_0^x \\frac{T(\\xi)}{GJ}\\,d\\xi`,
+                    `GJ = ${toLatexExp(GJ, 3)}\\text{ N}\\cdot\\text{m}^2`,
+                ]
+            });
+        }
 
         for (let i = 0; i <= points; i++) {
             const x = i * dx;
@@ -241,22 +271,27 @@ export const solveBeam = (beam: BeamConfig): AnalysisResult => {
     }
 
     // ── Step: Deflection ──
-    steps.push({
-        title: '7. Slope & Deflection',
-        description: `Deflection y(x) is computed by double integration of the curvature equation:\n\n` +
-            `  EI·d²y/dx² = M(x)   → First integration → Slope θ(x) = dy/dx\n` +
-            `                       → Second integration → Deflection y(x)\n\n` +
-            `Boundary conditions applied:\n` +
-            (beam.supports.find(s => s.type === 'fixed')
-                ? `  • Fixed support: y = 0, θ = 0 at fixed end`
-                : `  • Simply supported: y = 0 at both support positions`),
-        equations: [
-            `EI·d²y/dx² = M(x)`,
-            `EI·θ(x) = ∫M(x)dx + C₁`,
-            `EI·y(x) = ∫∫M(x)dx² + C₁·x + C₂`,
-            `BCs determine C₁ and C₂`,
-        ]
-    });
+    if (generateSteps) {
+        steps.push({
+            title: '7. Slope & Deflection',
+            description: `The deflection curve $y(x)$ is computed by integrating the Euler-Bernoulli beam curvature equation twice:\n\n` +
+                `$$E I \\frac{d^2y}{dx^2} = M(x)$$\n\n` +
+                `Integrating once yields the slope function $\\theta(x) = \\frac{dy}{dx}$:\n` +
+                `$$E I \\theta(x) = \\int M(x)\\,dx + C_1$$\n\n` +
+                `Integrating a second time yields the deflection function $y(x)$:\n` +
+                `$$E I y(x) = \\iint M(x)\\,dx^2 + C_1 x + C_2$$\n\n` +
+                `Boundary conditions used to solve for integration constants $C_1$ and $C_2$:\n` +
+                (beam.supports.find(s => s.type === 'fixed')
+                    ? `  • Fixed support: $y = 0$, $\\theta = 0$ at the wall`
+                    : `  • Simply supported: $y = 0$ at both support locations`),
+            equations: [
+                `EI \\frac{d^2y}{dx^2} = M(x)`,
+                `EI \\theta(x) = \\int M(x)\\,dx + C_1`,
+                `EI y(x) = \\iint M(x)\\,dx^2 + C_1 x + C_2`,
+                `\\text{BCs solve for } C_1 \\text{ and } C_2`,
+            ]
+        });
+    }
 
     // Double integration
     let slopeEI: number[] = [0];
@@ -314,14 +349,16 @@ export const solveBeam = (beam: BeamConfig): AnalysisResult => {
         }
     }
 
-    steps.push({
-        title: '8. Maximum Deflection',
-        description: `The maximum deflection occurs where slope θ(x) = 0 (or at beam end for cantilever).\n\n` +
-            `  δ_max = ${displayDeflection(maxDef, beam.units)}\n\n` +
-            `This is the greatest transverse displacement of the beam's neutral axis.`,
-        equations: [`δ_max = ${(maxDef * 1000).toFixed(4)} mm`],
-        result: `Maximum deflection = ${displayDeflection(maxDef, beam.units)}`
-    });
+    if (generateSteps) {
+        steps.push({
+            title: '8. Maximum Deflection',
+            description: `The maximum deflection magnitude occurs at the point where the slope $\\theta(x) = 0$ (or at the free tip of a cantilever):\n\n` +
+                `$$\\delta_{\\text{max}} = ${displayDeflection(maxDef, beam.units)}$$\n\n` +
+                `This value represents the peak displacement of the beam's neutral axis under the combined loading.`,
+            equations: [`\\delta_{\\text{max}} = ${(maxDef * 1000).toFixed(4)}\\text{ mm}`],
+            result: `Maximum deflection = ${displayDeflection(maxDef, beam.units)}`
+        });
+    }
 
     // ── Inferences ──
     const sfInference = computeChartInference(shearForce, 'Shear Force', v => displayForce(v, beam.units));
@@ -348,6 +385,79 @@ export const solveBeam = (beam: BeamConfig): AnalysisResult => {
     };
 };
 
+export const solveBeam = (beam: BeamConfig): AnalysisResult => {
+    const mainResult = solveBeamInternal(beam, true);
+
+    if (beam.loads.length > 1) {
+        const cases = beam.loads.map((load, index) => {
+            const singleLoadBeam: BeamConfig = {
+                ...beam,
+                loads: [load]
+            };
+            const caseResult = solveBeamInternal(singleLoadBeam, false);
+            return {
+                index: index + 1,
+                load,
+                result: caseResult
+            };
+        });
+
+        let description = `To solve this beam problem using the **Method of Superposition (MOS)**, we break down the complex loading scenario into simpler, standard cases. By finding the support reactions, internal shear/moment diagrams, and deflection curves for each individual case, we can sum them up algebraically to get the final solution.\n\n`;
+
+        description += `### Step 1: Identify and Separate the Cases\n\n`;
+        description += `We split the ${beam.loads.length} applied load(s) into distinct cases:\n`;
+        cases.forEach(c => {
+            const lbl = c.load.label ? `"${c.load.label}"` : `${c.load.type} load`;
+            const cat = c.load.category ? ` (${c.load.category})` : '';
+            description += `* **Case ${c.index}:** Single ${lbl}${cat} at $x = ${c.load.position.toFixed(2)}\\text{ m}$ (Magnitude: $${Math.abs(c.load.magnitude).toFixed(1)}\\text{ N}$)\n`;
+        });
+
+        description += `\n### Step 2: Analyze Individual Cases\n\n`;
+        cases.forEach(c => {
+            const lbl = c.load.label ? `"${c.load.label}"` : `${c.load.type} load`;
+            const cat = c.load.category ? ` (${c.load.category})` : '';
+            description += `**Case ${c.index} Details (${lbl}${cat}):**\n`;
+            description += `* Shear Force $V$: Max shear is $${c.result.maxShearForce.toFixed(1)}\\text{ N}$\n`;
+            description += `* Bending Moment $M$: Max moment is $${c.result.maxBendingMoment.toFixed(1)}\\text{ N}\\cdot\\text{m}$\n`;
+            description += `* Deflection $y$: Max deflection is $${(c.result.maxDeflection * 1000).toFixed(4)}\\text{ mm}$\n`;
+            description += `* Reactions: ${Object.entries(c.result.reactions).map(([id, r]) => {
+                const formattedId = id.includes('_') ? id : id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+                return `$R_{y,${formattedId}} = ${r.Fy.toFixed(1)}\\text{ N}$${r.Mz !== undefined ? `, $M_{z,${formattedId}} = ${r.Mz.toFixed(1)}\\text{ N}\\cdot\\text{m}$` : ''}`;
+            }).join(', ')}\n\n`;
+        });
+
+        description += `\n### Step 3: Apply Method of Superposition (MOS)\n\n`;
+        description += `Summing Case results point-by-point yields the total response:\n\n`;
+        description += `* **Reactions:** Combined reactions are the algebraic sum of individual reaction forces.\n`;
+        description += `* **Shear Force & Bending Moment:** Algebraic sum of corresponding ordinates at each position $x$.\n`;
+        description += `* **Deflection Curve:** Combined displacement is the sum of case displacements:\n`;
+        description += `$$y_{\\text{total}}(x) = y_1(x) + y_2(x) + \\dots$$\n\n`;
+
+        description += `### Summary Table of Superposition\n\n`;
+        description += `| Parameters | ` + cases.map(c => `Case ${c.index}`).join(' | ') + ` | Combined Beam (MOS) |\n`;
+        description += `| --- | ` + cases.map(() => `---`).join(' | ') + ` | --- |\n`;
+        description += `| **Max Shear** | ` + cases.map(c => `$${c.result.maxShearForce.toFixed(1)}\\text{ N}$`).join(' | ') + ` | $${mainResult.maxShearForce.toFixed(1)}\\text{ N}$ |\n`;
+        description += `| **Max Moment** | ` + cases.map(c => `$${c.result.maxBendingMoment.toFixed(1)}\\text{ N}\\cdot\\text{m}$`).join(' | ') + ` | $${mainResult.maxBendingMoment.toFixed(1)}\\text{ N}\\cdot\\text{m}$ |\n`;
+        description += `| **Max Deflection** | ` + cases.map(c => `$${(c.result.maxDeflection * 1000).toFixed(4)}\\text{ mm}$`).join(' | ') + ` | $${(mainResult.maxDeflection * 1000).toFixed(4)}\\text{ mm}$ |\n`;
+
+        beam.supports.forEach(s => {
+            const formattedId = s.id.includes('_') ? s.id : s.id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+            description += `| **Reaction $R_{y,${formattedId}}$** | ` + cases.map(c => `$${(c.result.reactions[s.id]?.Fy ?? 0).toFixed(1)}\\text{ N}$`).join(' | ') + ` | $${(mainResult.reactions[s.id]?.Fy ?? 0).toFixed(1)}\\text{ N}$ |\n`;
+            if (s.type === 'fixed') {
+                description += `| **Moment $M_{z,${formattedId}}$** | ` + cases.map(c => `$${(c.result.reactions[s.id]?.Mz ?? 0).toFixed(1)}\\text{ N}\\cdot\\text{m}$`).join(' | ') + ` | $${(mainResult.reactions[s.id]?.Mz ?? 0).toFixed(1)}\\text{ N}\\cdot\\text{m}$ |\n`;
+            }
+        });
+
+        mainResult.steps.push({
+            title: '9. Method of Superposition (MOS) Decomposition',
+            description,
+            result: `Superposition validated. Max deflection = ${(mainResult.maxDeflection * 1000).toFixed(4)} mm`
+        });
+    }
+
+    return mainResult;
+};
+
 // ─── Reaction Solver ─────────────────────────────────────────────────────────
 
 function classifyBeam(beam: BeamConfig): string {
@@ -367,18 +477,20 @@ function getTotalLoads(loads: Load[], fixedPos: number, steps: SolverStep[]): { 
     let sumFy = 0, sumM = 0;
     const eqLines: string[] = [];
 
-    loads.forEach(load => {
+    loads.forEach((load, idx) => {
+        const dispName = load.label ? `\\text{Load "${load.label}"}` : `L_{${idx + 1}}`;
+
         if (load.type === 'point') {
             sumFy += load.magnitude;
             sumM += load.magnitude * (load.position - fixedPos);
-            eqLines.push(`Point: F=${load.magnitude.toFixed(2)}N @ x=${load.position.toFixed(2)}m → M about A = ${(load.magnitude * (load.position - fixedPos)).toFixed(2)} N·m`);
+            eqLines.push(`${dispName}: \\quad F = ${load.magnitude.toFixed(2)}\\text{ N} \\quad \\text{at } x = ${load.position.toFixed(2)}\\text{ m} \\implies M_{\\text{about A}} = ${(load.magnitude * (load.position - fixedPos)).toFixed(2)}\\text{ N}\\cdot\\text{m}`);
         } else if (load.type === 'udl') {
             const L = (load.endPosition ?? load.position) - load.position;
             const P = load.magnitude * L;
             const cen = load.position + L / 2;
             sumFy += P;
             sumM += P * (cen - fixedPos);
-            eqLines.push(`UDL: P=${P.toFixed(2)}N (centroid @ ${cen.toFixed(2)}m) → M = ${(P * (cen - fixedPos)).toFixed(2)} N·m`);
+            eqLines.push(`${dispName}: \\quad P = w \\cdot L = ${load.magnitude.toFixed(2)}\\text{ N/m} \\times ${L.toFixed(2)}\\text{ m} = ${P.toFixed(2)}\\text{ N} \\quad \\text{at centroid } x_c = ${cen.toFixed(2)}\\text{ m} \\implies M_{\\text{about A}} = ${(P * (cen - fixedPos)).toFixed(2)}\\text{ N}\\cdot\\text{m}`);
         } else if (load.type === 'uvl') {
             const L = (load.endPosition ?? load.position) - load.position;
             const w1 = load.magnitude, w2 = load.endMagnitude ?? 0;
@@ -389,17 +501,17 @@ function getTotalLoads(loads: Load[], fixedPos: number, steps: SolverStep[]): { 
                 const cen = load.position + xc_local;
                 sumFy += P;
                 sumM += P * (cen - fixedPos);
-                eqLines.push(`UVL: P=${P.toFixed(2)}N (centroid @ ${cen.toFixed(2)}m) → M = ${(P * (cen - fixedPos)).toFixed(2)} N·m`);
+                eqLines.push(`${dispName}: \\quad P = \\frac{w_1 + w_2}{2} \\cdot L = ${P.toFixed(2)}\\text{ N} \\quad \\text{at centroid } x_c = ${cen.toFixed(2)}\\text{ m} \\implies M_{\\text{about A}} = ${(P * (cen - fixedPos)).toFixed(2)}\\text{ N}\\cdot\\text{m}`);
             }
         } else if (load.type === 'moment') {
             sumM += load.magnitude;
-            eqLines.push(`Moment: M=${load.magnitude.toFixed(2)} N·m applied`);
+            eqLines.push(`${dispName}: \\quad M = ${load.magnitude.toFixed(2)}\\text{ N}\\cdot\\text{m} \\quad \\text{applied at } x = ${load.position.toFixed(2)}\\text{ m}`);
         }
     });
 
     steps.push({
         title: '2a. Load Resultants',
-        description: `Converting distributed loads to equivalent point loads:\n${eqLines.join('\n')}`,
+        description: 'Converting distributed loads to equivalent point loads:',
         equations: eqLines
     });
 
@@ -414,17 +526,18 @@ const solveReactions = (beam: BeamConfig, steps: SolverStep[]): { reactions: Ana
     if (fixed) {
         const { sumFy, sumM } = getTotalLoads(loads, fixed.position, steps);
         const Ry = sumFy, Mz = sumM;
+        const formattedId = fixed.id.includes('_') ? fixed.id : fixed.id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
 
         steps.push({
             title: '2b. Reactions — Cantilever',
-            description: `For a cantilever fixed at x = ${fixed.position.toFixed(2)} m:\n\n` +
-                `  ΣFᵧ = 0  →  R_y = ΣF_loads = ${Ry.toFixed(2)} N (upward)\n` +
-                `  ΣM_A = 0 →  M_z = ΣM_loads = ${Mz.toFixed(2)} N·m (at fixed end)`,
+            description: `For a cantilever fixed at $x = ${fixed.position.toFixed(2)}\\text{ m}$:\n\n` +
+                `  • Force equilibrium: $\\Sigma F_y = 0 \\implies R_{${formattedId}} = \\Sigma F_{\\text{loads}} = ${Ry.toFixed(1)}\\text{ N}$ (upward)\n` +
+                `  • Moment equilibrium: $\\Sigma M_{${formattedId}} = 0 \\implies M_{${formattedId}} = \\Sigma M_{\\text{loads}} = ${Mz.toFixed(1)}\\text{ N}\\cdot\\text{m}$ (at fixed wall)`,
             equations: [
-                `ΣFᵧ = 0: R_A = ${Ry.toFixed(2)} N`,
-                `ΣM_A = 0: M_A = ${Mz.toFixed(2)} N·m`,
+                `\\Sigma F_y = 0 \\implies R_{${formattedId}} = ${Ry.toFixed(1)}\\text{ N}`,
+                `\\Sigma M_{${formattedId}} = 0 \\implies M_{${formattedId}} = ${Mz.toFixed(1)}\\text{ N}\\cdot\\text{m}`,
             ],
-            result: `R_A = ${Ry.toFixed(2)} N ↑,  M_A = ${Mz.toFixed(2)} N·m`
+            result: `$R_{${formattedId}} = ${Ry.toFixed(1)}\\text{ N} \\uparrow$,  $M_{${formattedId}} = ${Mz.toFixed(1)}\\text{ N}\\cdot\\text{m}$`
         });
         return { reactions: { [fixed.id]: { Fy: Ry, Mz } } };
     }
@@ -437,19 +550,22 @@ const solveReactions = (beam: BeamConfig, steps: SolverStep[]): { reactions: Ana
         const R_s2 = sumM / L;
         const R_s1 = sumFy - R_s2;
 
+        const id1 = s1.id.includes('_') ? s1.id : s1.id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+        const id2 = s2.id.includes('_') ? s2.id : s2.id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+
         steps.push({
             title: '2b. Reactions — Simply Supported',
-            description: `Supports at A (x=${s1.position.toFixed(2)} m) and B (x=${s2.position.toFixed(2)} m), span L = ${L.toFixed(2)} m.\n\n` +
-                `  ΣM_A = 0:\n` +
-                `    R_B × L = ΣM_about_A\n` +
-                `    R_B = ${sumM.toFixed(2)} / ${L.toFixed(2)} = ${R_s2.toFixed(2)} N\n\n` +
-                `  ΣFᵧ = 0:\n` +
-                `    R_A = ΣF − R_B = ${sumFy.toFixed(2)} − ${R_s2.toFixed(2)} = ${R_s1.toFixed(2)} N`,
+            description: `Supports at $${id1}$ (at $x = ${s1.position.toFixed(2)}\\text{ m}$) and $${id2}$ (at $x = ${s2.position.toFixed(2)}\\text{ m}$), with span $L = ${L.toFixed(2)}\\text{ m}$.\n\n` +
+                `  • Moment equilibrium about $${id1}$:\n` +
+                `$$R_{${id2}} \\cdot L = \\sum M_{${id1},\\text{loads}}$$\n` +
+                `$$R_{${id2}} = \\frac{${sumM.toFixed(1)}}{${L.toFixed(2)}} = ${R_s2.toFixed(1)}\\text{ N}$$\n\n` +
+                `  • Vertical force balance:\n` +
+                `$$R_{${id1}} = \\sum F - R_{${id2}} = ${sumFy.toFixed(1)} - ${R_s2.toFixed(1)} = ${R_s1.toFixed(1)}\\text{ N}$$`,
             equations: [
-                `ΣM_A = 0: R_B = ${sumM.toFixed(2)} / ${L.toFixed(2)} = ${R_s2.toFixed(2)} N`,
-                `ΣFᵧ = 0: R_A = ${R_s1.toFixed(2)} N`,
+                `\\Sigma M_{${id1}} = 0 \\implies R_{${id2}} = \\frac{${sumM.toFixed(1)}}{${L.toFixed(2)}} = ${R_s2.toFixed(1)}\\text{ N}`,
+                `\\Sigma F_y = 0 \\implies R_{${id1}} = ${R_s1.toFixed(1)}\\text{ N}`,
             ],
-            result: `R_A = ${R_s1.toFixed(2)} N ↑,  R_B = ${R_s2.toFixed(2)} N ↑`
+            result: `$R_{${id1}} = ${R_s1.toFixed(1)}\\text{ N} \\uparrow$,  $R_{${id2}} = ${R_s2.toFixed(1)}\\text{ N} \\uparrow$`
         });
         return { reactions: { [s1.id]: { Fy: R_s1 }, [s2.id]: { Fy: R_s2 } } };
     }
