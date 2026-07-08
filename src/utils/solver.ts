@@ -1,7 +1,7 @@
 import type {
     BeamConfig, Load, AnalysisResult, SolverStep, ChartInference
 } from './types';
-import { displayForce, displayMoment, displayLength, displayDeflection, toLatexExp } from './types';
+import { displayForce, displayMoment, displayLength, displayDeflection, toLatexExp, formatLabelForLatex } from './types';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -421,7 +421,8 @@ export const solveBeam = (beam: BeamConfig): AnalysisResult => {
             description += `* Bending Moment $M$: Max moment is $${c.result.maxBendingMoment.toFixed(1)}\\text{ N}\\cdot\\text{m}$\n`;
             description += `* Deflection $y$: Max deflection is $${(c.result.maxDeflection * 1000).toFixed(4)}\\text{ mm}$\n`;
             description += `* Reactions: ${Object.entries(c.result.reactions).map(([id, r]) => {
-                const formattedId = id.includes('_') ? id : id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+                const s = beam.supports.find(sup => sup.id === id);
+                const formattedId = formatLabelForLatex(s?.label || id);
                 return `$R_{y,${formattedId}} = ${r.Fy.toFixed(1)}\\text{ N}$${r.Mz !== undefined ? `, $M_{z,${formattedId}} = ${r.Mz.toFixed(1)}\\text{ N}\\cdot\\text{m}$` : ''}`;
             }).join(', ')}\n\n`;
         });
@@ -441,7 +442,7 @@ export const solveBeam = (beam: BeamConfig): AnalysisResult => {
         description += `| **Max Deflection** | ` + cases.map(c => `$${(c.result.maxDeflection * 1000).toFixed(4)}\\text{ mm}$`).join(' | ') + ` | $${(mainResult.maxDeflection * 1000).toFixed(4)}\\text{ mm}$ |\n`;
 
         beam.supports.forEach(s => {
-            const formattedId = s.id.includes('_') ? s.id : s.id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+            const formattedId = formatLabelForLatex(s.label || s.id);
             description += `| **Reaction $R_{y,${formattedId}}$** | ` + cases.map(c => `$${(c.result.reactions[s.id]?.Fy ?? 0).toFixed(1)}\\text{ N}$`).join(' | ') + ` | $${(mainResult.reactions[s.id]?.Fy ?? 0).toFixed(1)}\\text{ N}$ |\n`;
             if (s.type === 'fixed') {
                 description += `| **Moment $M_{z,${formattedId}}$** | ` + cases.map(c => `$${(c.result.reactions[s.id]?.Mz ?? 0).toFixed(1)}\\text{ N}\\cdot\\text{m}$`).join(' | ') + ` | $${(mainResult.reactions[s.id]?.Mz ?? 0).toFixed(1)}\\text{ N}\\cdot\\text{m}$ |\n`;
@@ -526,7 +527,7 @@ const solveReactions = (beam: BeamConfig, steps: SolverStep[]): { reactions: Ana
     if (fixed) {
         const { sumFy, sumM } = getTotalLoads(loads, fixed.position, steps);
         const Ry = sumFy, Mz = sumM;
-        const formattedId = fixed.id.includes('_') ? fixed.id : fixed.id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+        const formattedId = formatLabelForLatex(fixed.label || fixed.id);
 
         steps.push({
             title: '2b. Reactions — Cantilever',
@@ -550,8 +551,8 @@ const solveReactions = (beam: BeamConfig, steps: SolverStep[]): { reactions: Ana
         const R_s2 = sumM / L;
         const R_s1 = sumFy - R_s2;
 
-        const id1 = s1.id.includes('_') ? s1.id : s1.id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
-        const id2 = s2.id.includes('_') ? s2.id : s2.id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+        const id1 = formatLabelForLatex(s1.label || s1.id);
+        const id2 = formatLabelForLatex(s2.label || s2.id);
 
         steps.push({
             title: '2b. Reactions — Simply Supported',

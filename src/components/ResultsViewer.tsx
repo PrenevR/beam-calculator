@@ -1,5 +1,5 @@
 import type { AnalysisResult, BeamConfig, ChartInference } from '../utils/types';
-import { displayForce, displayMoment, displayDeflection, displayLength, toLatexExp } from '../utils/types';
+import { displayForce, displayMoment, displayDeflection, displayLength, toLatexExp, formatLabelForLatex } from '../utils/types';
 import React, { useState } from 'react';
 import {
     LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -360,7 +360,7 @@ function ReactionsTable({ result, beam }: Props) {
                     <tbody>
                         {Object.entries(result.reactions).map(([id, r]) => {
                             const sup = beam.supports.find(s => s.id === id);
-                            const formattedId = id.includes('_') ? id : id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+                            const formattedId = formatLabelForLatex(sup?.label || id);
                             return (
                                 <tr key={id} style={{ borderBottom: `1px solid ${DARK() ? '#21262d' : '#f1f5f9'}` }}>
                                     <td style={{ padding: '8px 10px', fontWeight: 700, color: '#f59e0b' }}>
@@ -667,12 +667,12 @@ function drawPrintBeamSVG(beam: BeamConfig): string {
             svg += `<circle cx="${x + 5}" cy="${beamY + 14}" r="3" fill="#3b82f6" stroke="#2563eb" stroke-width="1" />`;
             svg += `<line x1="${x - 12}" y1="${beamY + 17}" x2="${x + 12}" y2="${beamY + 17}" stroke="#1e293b" stroke-width="1.5" />`;
         }
-        svg += `<text x="${x}" y="${beamY + 30}" font-size="9" font-weight="bold" fill="#475569" text-anchor="middle">${s.id}</text>`;
+        svg += `<text x="${x}" y="${beamY + 30}" font-size="9" font-weight="bold" fill="#475569" text-anchor="middle">${s.label || s.id}</text>`;
     });
 
     // Loads
     beam.loads.forEach((l, i) => {
-        const label = l.label || `L${i+1}`;
+        const label = l.label || `P${i+1}`;
         const x = pad + l.position * scale;
         if (l.type === 'point') {
             const isUp = l.magnitude < 0;
@@ -1013,7 +1013,7 @@ function handlePrint(beam: BeamConfig, result: AnalysisResult) {
     
     const reactionRows = Object.entries(result.reactions).map(([id, reac]) => {
         const sup = beam.supports.find(s => s.id === id);
-        const formattedId = id.includes('_') ? id : id.replace(/([A-Za-z])(\d+)/g, '$1_$2');
+        const formattedId = formatLabelForLatex(sup?.label || id);
         const idMath = katex.renderToString(formattedId, { displayMode: false, throwOnError: false });
         const ryMath = katex.renderToString(`R_{y,${formattedId}} = ${reac.Fy.toFixed(1)}\\text{ N}`, { displayMode: false, throwOnError: false });
         const mzMath = reac.Mz !== undefined 

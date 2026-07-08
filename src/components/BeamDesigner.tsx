@@ -282,6 +282,12 @@ function SelectedPanel({ selectedId, beam, setBeam }: { selectedId: string; beam
 
             {sup && (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ flex: 1, minWidth: 120 }}>
+                        <label className="field-label">Custom Name</label>
+                        <input type="text" value={sup.label || ''} placeholder="e.g. S1"
+                            onChange={e => setBeam({ ...beam, supports: beam.supports.map(s => s.id === selectedId ? { ...s, label: e.target.value } : s) })}
+                            className="input" style={{ width: '100%', fontSize: 12, padding: '4px 8px' }} />
+                    </div>
                     <div>
                         <label className="field-label">Type</label>
                         <select value={sup.type} className="select" style={{ fontSize: 12, padding: '4px 8px' }}
@@ -490,45 +496,70 @@ export default function BeamDesigner({ beam, setBeam }: Props) {
         return () => window.removeEventListener('mouseup', up);
     }, []);
 
-    const addSupport = (type: SupportType) => setBeam({ ...beam, supports: [...beam.supports, { id: `s${Date.now()}`, type, position: beam.length / 2 }] });
+    const addSupport = (type: SupportType) => {
+        const existingNums = beam.supports
+            .map(s => {
+                const match = (s.label || '').match(/^S(\d+)$/);
+                return match ? parseInt(match[1], 10) : 0;
+            });
+        const nextNum = existingNums.length > 0 ? Math.max(...existingNums, 0) + 1 : 1;
+        setBeam({
+            ...beam,
+            supports: [...beam.supports, {
+                id: `s${Date.now()}`,
+                type,
+                position: beam.length / 2,
+                label: `S${nextNum}`
+            }]
+        });
+    };
     const addHinge = () => setBeam({ ...beam, hinges: [...(beam.hinges || []), { id: `h${Date.now()}`, position: beam.length / 2, label: '' }] });
-    const addLoad = (type: LoadType) => setBeam({
-        ...beam, loads: [...beam.loads, {
-            id: `l${Date.now()}`, type, position: beam.length / 3, magnitude: 5000,
-            endMagnitude: type === 'uvl' ? 0 : undefined,
-            endPosition: (type === 'udl' || type === 'uvl') ? beam.length * 2 / 3 : undefined,
-        }]
-    });
+    const addLoad = (type: LoadType) => {
+        const existingNums = beam.loads
+            .map(l => {
+                const match = (l.label || '').match(/^P(\d+)$/);
+                return match ? parseInt(match[1], 10) : 0;
+            });
+        const nextNum = existingNums.length > 0 ? Math.max(...existingNums, 0) + 1 : 1;
+        setBeam({
+            ...beam, loads: [...beam.loads, {
+                id: `l${Date.now()}`, type, position: beam.length / 3, magnitude: 5000,
+                endMagnitude: type === 'uvl' ? 0 : undefined,
+                endPosition: (type === 'udl' || type === 'uvl') ? beam.length * 2 / 3 : undefined,
+                label: `P${nextNum}`
+            }]
+        });
+    };
 
     const applyPreset = (preset: string) => {
         if (preset === 'simply-supported') {
             setBeam({
                 ...beam,
                 supports: [
-                    { id: `s-pin-${Date.now()}`, type: 'pin', position: 0 },
-                    { id: `s-roll-${Date.now()}`, type: 'roller', position: beam.length }
+                    { id: `s-pin-${Date.now()}`, type: 'pin', position: 0, label: 'S1' },
+                    { id: `s-roll-${Date.now()}`, type: 'roller', position: beam.length, label: 'S2' }
                 ]
             });
         } else if (preset === 'cantilever-left') {
             setBeam({
                 ...beam,
                 supports: [
-                    { id: `s-fixed-${Date.now()}`, type: 'fixed', position: 0 }
+                    { id: `s-fixed-${Date.now()}`, type: 'fixed', position: 0, label: 'S1' }
                 ]
             });
         } else if (preset === 'cantilever-right') {
             setBeam({
                 ...beam,
                 supports: [
-                    { id: `s-fixed-${Date.now()}`, type: 'fixed', position: beam.length }
+                    { id: `s-fixed-${Date.now()}`, type: 'fixed', position: beam.length, label: 'S1' }
                 ]
             });
         } else if (preset === 'fixed-fixed') {
             setBeam({
                 ...beam,
                 supports: [
-                    { id: `s-fix1-${Date.now()}`, type: 'fixed', position: 0 },
-                    { id: `s-fix2-${Date.now()}`, type: 'fixed', position: beam.length }
+                    { id: `s-fix1-${Date.now()}`, type: 'fixed', position: 0, label: 'S1' },
+                    { id: `s-fix2-${Date.now()}`, type: 'fixed', position: beam.length, label: 'S2' }
                 ]
             });
         }
@@ -826,12 +857,20 @@ export default function BeamDesigner({ beam, setBeam }: Props) {
                                                 <InlineSVGInput value={s.position} x={sx} y={BEAM_Y + BEAM_H / 2 + 52}
                                                     onCommit={v => { setBeam({ ...beam, supports: beam.supports.map(x => x.id === s.id ? { ...x, position: Math.max(0, Math.min(beam.length, v)) } : x) }); setDblEdit(null); }} />
                                             ) : (
-                                                <text x={sx} y={BEAM_Y + BEAM_H / 2 + 54} textAnchor="middle" fontSize="9"
-                                                    fill="#f59e0b" fontFamily="JetBrains Mono,monospace" fontWeight="700"
-                                                    style={{ cursor: 'text', textDecoration: 'underline dotted' }}
-                                                    onDoubleClick={e => { e.stopPropagation(); setSelected(s.id); setDblEdit({ id: s.id, field: 'position' }); }}>
-                                                    x={s.position.toFixed(2)}m
-                                                </text>
+                                                <g>
+                                                    {s.label && (
+                                                        <text x={sx} y={BEAM_Y + BEAM_H / 2 + 45} textAnchor="middle" fontSize="9.5"
+                                                            fill="#d97706" fontWeight="800">
+                                                            {s.label}
+                                                        </text>
+                                                    )}
+                                                    <text x={sx} y={BEAM_Y + BEAM_H / 2 + 56} textAnchor="middle" fontSize="9"
+                                                        fill="#f59e0b" fontFamily="JetBrains Mono,monospace" fontWeight="700"
+                                                        style={{ cursor: 'text', textDecoration: 'underline dotted' }}
+                                                        onDoubleClick={e => { e.stopPropagation(); setSelected(s.id); setDblEdit({ id: s.id, field: 'position' }); }}>
+                                                        x={s.position.toFixed(2)}m
+                                                    </text>
+                                                </g>
                                             )}
 
                                             {isSel && (
@@ -939,6 +978,9 @@ export default function BeamDesigner({ beam, setBeam }: Props) {
                                     {beam.supports.map((s, i) => (
                                         <div key={s.id} className="card-inner" style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 5, padding: '5px 8px' }}>
                                             <span style={{ fontSize: 10, color: '#94a3b8', width: 14 }}>{i + 1}</span>
+                                            <input type="text" value={s.label || ''} placeholder="Name"
+                                                onChange={e => setBeam({ ...beam, supports: beam.supports.map(x => x.id === s.id ? { ...x, label: e.target.value } : x) })}
+                                                className="input" style={{ fontSize: 11, padding: '3px 5px', width: 45 }} />
                                             <select value={s.type} className="select" style={{ fontSize: 11, padding: '3px 6px', flex: 1 }}
                                                 onChange={e => setBeam({ ...beam, supports: beam.supports.map(x => x.id === s.id ? { ...x, type: e.target.value as SupportType } : x) })}>
                                                 <option value="pin">Pin</option>

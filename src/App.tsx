@@ -15,12 +15,12 @@ const DEFAULT_BEAM: BeamConfig = {
     depth: 0.5,
     gravity: 9.81,
     supports: [
-        { id: 's1', type: 'pin', position: 0 },
-        { id: 's2', type: 'roller', position: 10 },
+        { id: 's1', type: 'pin', position: 0, label: 'S1' },
+        { id: 's2', type: 'roller', position: 10, label: 'S2' },
     ],
     hinges: [],
     loads: [
-        { id: 'l1', type: 'point', position: 5, magnitude: 10000 },
+        { id: 'l1', type: 'point', position: 5, magnitude: 10000, label: 'P1' },
     ],
     loadCombinations: [],
     units: UNIT_SYSTEMS['SI'],

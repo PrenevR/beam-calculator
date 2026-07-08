@@ -6,6 +6,7 @@ export interface Support {
     id: string;
     type: SupportType;
     position: number; // x-coordinate in base units (m or ft)
+    label?: string;   // Optional user label
 }
 
 export type LoadCategory = 'dead' | 'live' | 'wind' | 'roof' | 'rain' | 'snow' | 'seismic';
@@ -179,3 +180,20 @@ export function toLatexExp(val: number, fractionDigits = 2): string {
     }
     return val.toString();
 }
+
+export function formatLabelForLatex(label: string): string {
+    const trimmed = label.trim();
+    // If it's exactly S1, P1, s2, R2 etc. (single letter followed by numbers)
+    if (/^[A-Za-z]\d+$/.test(trimmed)) {
+        return trimmed.replace(/([A-Za-z])(\d+)/, '$1_$2');
+    }
+    // If it's alphanumeric and has no spaces, e.g. "Support1" -> "Support_1"
+    if (/^[A-Za-z0-9_]+$/.test(trimmed)) {
+        if (/\d+$/.test(trimmed)) {
+            return trimmed.replace(/([A-Za-z_]+)(\d+)/, '$1_$2');
+        }
+        return `\\text{${trimmed}}`;
+    }
+    return `\\text{${trimmed}}`;
+}
+
