@@ -309,7 +309,7 @@ function ChartSection({
                 <button onClick={() => setShowMethod(o => !o)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#6366f1', fontWeight: 600, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                     {showMethod ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    How was this graph derived?
+                    Derivation
                 </button>
                 {showMethod && (
                     <ul style={listStyle}>
@@ -323,11 +323,11 @@ function ChartSection({
                 <button onClick={() => setShowRelevance(o => !o)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: '#d97706', fontWeight: 600, padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
                     {showRelevance ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    Why does this graph matter?
+                    Practical Relevance
                 </button>
                 {showRelevance && (
                     <div className="relevance-box" style={{ marginTop: 8 }}>
-                        <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 6, opacity: 0.8 }}>🏗️ Practical Relevance</div>
+                        <div style={{ fontWeight: 700, fontSize: 11, marginBottom: 6, opacity: 0.8 }}>Engineering Significance</div>
                         <ul style={{ margin: 0, paddingLeft: 18, lineHeight: 1.95 }}>
                             {relevancePoints.map((p, i) => <li key={i}>{p}</li>)}
                         </ul>
@@ -469,11 +469,11 @@ export default function ResultsViewer({ result, beam }: Props) {
                     'Computed at 501 equally-spaced points using direct summation',
                 ]}
                 relevancePoints={[
-                    '🔧 Shear failure (rivets, welds, connections) occurs where |V| is maximum — check peaks',
-                    '✂️ In simply supported beams, max shear is at the support closest to the largest load',
-                    '📐 Bolts/pins in connections must be designed to resist V at the joint cross-section',
-                    '⚠️ A sudden jump in the SFD indicates a concentrated (point) force — useful for identifying load positions',
-                    '🏗️ In bridge girders, shear is critical near the abutments (supports); moment governs at midspan',
+                    'Shear failure (rivets, welds, connections) occurs where |V| is maximum — check peaks',
+                    'In simply supported beams, max shear is at the support closest to the largest load',
+                    'Bolts/pins in connections must be designed to resist V at the joint cross-section',
+                    'A sudden jump in the SFD indicates a concentrated (point) force — useful for identifying load positions',
+                    'In bridge girders, shear is critical near the abutments (supports); moment governs at midspan',
                 ]}>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={sfData} margin={{ top: 8, right: 20, bottom: 24, left: 10 }}>
@@ -501,11 +501,11 @@ export default function ResultsViewer({ result, beam }: Props) {
                     'Sign convention: positive = sagging (bottom fibre in tension)',
                 ]}
                 relevancePoints={[
-                    '📏 Cross-section sizing is dictated by max M: larger moment → deeper or wider beam needed',
-                    '💥 Flexural (bending) stress σ = M·y/I — fibres farthest from neutral axis are most stressed',
-                    '🌉 In a simply supported beam under UDL, the maximum moment is always at midspan = wL²/8',
-                    '🔩 Reinforcement in concrete beams is placed at the tension fibre (bottom for positive M, top for negative M)',
-                    '📊 Points of zero moment (inflection points) are ideal locations for splices and joints',
+                    'Cross-section sizing is dictated by max M: larger moment requires a deeper or wider section',
+                    'Flexural (bending) stress σ = M·y/I — fibres farthest from neutral axis are most stressed',
+                    'In a simply supported beam under UDL, the maximum moment is always at midspan = wL²/8',
+                    'Reinforcement in concrete beams is placed at the tension fibre (bottom for positive M, top for negative M)',
+                    'Points of zero moment (inflection points) are ideal locations for splices and joints',
                 ]}>
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={bmData} margin={{ top: 8, right: 20, bottom: 24, left: 10 }}>
@@ -533,11 +533,11 @@ export default function ResultsViewer({ result, beam }: Props) {
                     'Numerical integration via trapezoidal rule with 500 sub-intervals',
                 ]}
                 relevancePoints={[
-                    '🏠 Codes limit live-load deflection to L/360 (floors) or L/240 (roofs) — check against span',
-                    '👁️ Deflection > L/500 is often visible to the naked eye and affects user perception of safety',
-                    '🔧 Stiffer material (higher E) or deeper section (higher I) dramatically reduces deflection',
-                    '⚙️ Pre-cambering concrete or steel beams accounts for expected deflection, keeping them level under load',
-                    '💧 Excessive deflection in floor beams can cause ponding of water on flat roofs — a cumulative hazard',
+                    'Codes limit live-load deflection to L/360 (floors) or L/240 (roofs) — verify against span',
+                    'Deflection exceeding L/500 is often visible and can affect occupant confidence in structural adequacy',
+                    'Stiffer material (higher E) or deeper section (higher I) reduces deflection significantly',
+                    'Pre-cambering concrete or steel beams compensates for expected deflection under service loads',
+                    'Excessive deflection in roof beams can cause water ponding — a self-amplifying load hazard',
                 ]}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={defData} margin={{ top: 8, right: 20, bottom: 24, left: 10 }}>
@@ -570,11 +570,11 @@ export default function ResultsViewer({ result, beam }: Props) {
                     'θ = 0 at the point of maximum deflection (extremum condition)',
                 ]}
                 relevancePoints={[
-                    '🚂 Rail joints and bridge expansion joints require slope limits to prevent vehicle jolt (typically < 1/200)',
-                    '🪟 Door/window frames connected to beams must not rotate too much — otherwise frames jam or crack',
-                    '⚙️ Shaft and gear couplings are sensitive to angular misalignment — slope must be within tolerance',
-                    '📐 At zero-slope points, the beam is locally horizontal — these are the flattest regions of the deformed beam',
-                    '🔬 In experimental mechanics, slope is measured via inclinometers to verify theoretical predictions',
+                    'Rail and bridge expansion joints require slope limits to prevent vehicle jolt (typically < 1/200 rad)',
+                    'Door and window frames attached to beams must not rotate excessively — frames can jam or crack',
+                    'Shaft and gear couplings are sensitive to angular misalignment — slope must stay within tolerance',
+                    'At zero-slope points the beam is locally horizontal — these are the flattest regions of the deflected shape',
+                    'In experimental work, slope is measured via inclinometers and compared against theoretical θ(x)',
                 ]}>
                 <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={slopeData} margin={{ top: 8, right: 20, bottom: 24, left: 10 }}>
@@ -609,11 +609,11 @@ export default function ResultsViewer({ result, beam }: Props) {
                         'Analogous to beam bending: twist is to torque as deflection is to bending moment',
                     ]}
                     relevancePoints={[
-                        '🔄 Torsional rigidity is critical for long-span beams with eccentric loads to prevent twisting-induced instability',
-                        '⚙️ Angular precision in rotating shafts depends on limiting φ — crucial for machinery and power transmission',
-                        '📐 Boundary conditions (φ=0) must be carefully modeled to reflect actual physical restraints at the supports',
-                        '🏗️ In structural steel, I-beams are weak in torsion compared to box sections; φ diagrams highlight this vulnerability',
-                        '🔬 Verification of G and J properties can be done by comparing measured twist angles with calculated φ(x)',
+                        'Torsional rigidity is critical for long-span beams with eccentric loads — insufficient GJ leads to lateral-torsional buckling',
+                        'Angular precision in rotating shafts depends on limiting φ — relevant for gearboxes and power transmission',
+                        'Boundary conditions (φ=0) must reflect the actual physical restraints at the supports',
+                        'In structural steel, I-sections are weak in torsion compared to box sections; the φ diagram identifies where this is critical',
+                        'Measured twist angles from physical tests can be compared against calculated φ(x) to verify G and J values',
                     ]}>
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={twistData} margin={{ top: 8, right: 20, bottom: 24, left: 10 }}>

@@ -112,7 +112,7 @@ export default function App() {
 
                         {/* GitHub */}
                         <a
-                            href="https://github.com/PrenevR"
+                            href="https://github.com/PrenevR/beam-calculator"
                             target="_blank" rel="noreferrer"
                             className="btn-ghost"
                             title="GitHub"

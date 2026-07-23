@@ -277,7 +277,7 @@ function SelectedPanel({ selectedId, beam, setBeam }: { selectedId: string; beam
     return (
         <div style={{ background: panelBg, border: `1.5px solid ${panelBorder}`, borderRadius: 12, padding: '12px 14px', marginTop: 10, animation: 'slideDown 0.22s cubic-bezier(0.34,1.56,0.64,1) both' }}>
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: titleColor, marginBottom: 10 }}>
-                ✦ Selected: {sup ? `${sup.type} support` : hng ? 'Internal hinge' : `${lod!.type} load`}
+                Selected: {sup ? `${sup.type} support` : hng ? 'Internal hinge' : `${lod!.type} load`}
             </div>
 
             {sup && (
