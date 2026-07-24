@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+# Disallow build artifacts
+Disallow: /dist/
+Disallow: /node_modules/
+Disallow: /.git/
+
+Sitemap: https://ourmdssolver.vercel.app/sitemap.xml

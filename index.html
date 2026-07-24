@@ -2,9 +2,108 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+
+    <!-- Favicon & Manifest -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Viewport & Theme -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Beam Calculator - Structural Analysis Engine</title>
+    <meta name="theme-color" content="#2563eb" />
+
+    <!-- ── Primary SEO ──────────────────────────────────────────── -->
+    <title>Beam Calculator – Free Structural Analysis Tool | SFD, BMD & Deflection</title>
+    <meta name="title"
+          content="Beam Calculator – Free Structural Analysis Tool | SFD, BMD & Deflection" />
+    <meta name="description"
+          content="Free, open-source structural beam analysis web app. Instantly compute shear force diagrams (SFD), bending moment diagrams (BMD), slope, deflection, bending stress, and support reactions for statically determinate and indeterminate beams under any load combination." />
+    <meta name="keywords"
+          content="beam calculator, structural analysis, shear force diagram, bending moment diagram, SFD BMD, beam deflection, support reactions, civil engineering tool, mechanical engineering calculator, indeterminate beam, internal hinge, UDL, UVL, point load, elastic curve, free beam calculator, open source structural engineering" />
+    <meta name="author" content="PrenevR" />
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
+    <link rel="canonical" href="https://ourmdssolver.vercel.app/" />
+
+    <!-- ── Open Graph (Facebook / LinkedIn / Discord / WhatsApp) ── -->
+    <meta property="og:type"        content="website" />
+    <meta property="og:site_name"   content="FOSS Advanced Beam Calculator" />
+    <meta property="og:url"         content="https://ourmdssolver.vercel.app/" />
+    <meta property="og:title"       content="Beam Calculator – Free Structural Analysis Tool" />
+    <meta property="og:description" content="Compute SFD, BMD, deflection, and bending stress for any beam configuration. Supports pin, roller & fixed supports, UDL, UVL, point loads, concentrated moments, and internal hinges. Free & open source." />
+    <meta property="og:image"       content="https://ourmdssolver.vercel.app/og-image.png" />
+    <meta property="og:image:type"  content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt"   content="FOSS Advanced Beam Calculator – SFD and BMD diagram preview on a dark navy background" />
+    <meta property="og:locale"      content="en_US" />
+
+    <!-- ── Twitter / X Card ─────────────────────────────────────── -->
+    <meta name="twitter:card"        content="summary_large_image" />
+    <meta name="twitter:site"        content="@PrenevR" />
+    <meta name="twitter:url"         content="https://ourmdssolver.vercel.app/" />
+    <meta name="twitter:title"       content="Beam Calculator – Free Structural Analysis Tool" />
+    <meta name="twitter:description" content="Compute SFD, BMD, deflection, and bending stress for any beam in seconds. Free, open-source, runs in the browser." />
+    <meta name="twitter:image"       content="https://ourmdssolver.vercel.app/og-image.png" />
+    <meta name="twitter:image:alt"   content="FOSS Advanced Beam Calculator preview showing a beam diagram with SFD and BMD curves" />
+
+    <!-- ── JSON-LD Structured Data (Schema.org) ─────────────────── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://ourmdssolver.vercel.app/#website",
+          "url": "https://ourmdssolver.vercel.app/",
+          "name": "FOSS Advanced Beam Calculator",
+          "description": "Free and open-source structural beam analysis engine for civil and mechanical engineering.",
+          "inLanguage": "en-US"
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://ourmdssolver.vercel.app/#app",
+          "name": "FOSS Advanced Beam Calculator",
+          "alternateName": ["Beam Calculator", "SFD BMD Solver", "Structural Beam Analysis Tool"],
+          "url": "https://ourmdssolver.vercel.app/",
+          "description": "An interactive, open-source structural analysis engine for calculating shear force, bending moment, deflection, bending stress, and support reactions for beams under arbitrary load configurations.",
+          "applicationCategory": "EducationalApplication",
+          "applicationSubCategory": "Structural Engineering",
+          "operatingSystem": "Any",
+          "browserRequirements": "Requires a modern browser with JavaScript enabled",
+          "isAccessibleForFree": true,
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "author": {
+            "@type": "Person",
+            "name": "PrenevR",
+            "url": "https://github.com/PrenevR"
+          },
+          "codeRepository": "https://github.com/PrenevR/beam-calculator",
+          "license": "https://opensource.org/licenses/MIT",
+          "keywords": "beam calculator, shear force diagram, bending moment diagram, structural analysis, deflection, civil engineering, mechanical engineering",
+          "featureList": [
+            "Shear Force Diagram (SFD) computation",
+            "Bending Moment Diagram (BMD) computation",
+            "Slope and deflection curve analysis",
+            "Bending stress at extreme fibres",
+            "Torsion and angle of twist",
+            "Support reaction calculation",
+            "Statically indeterminate beam solver",
+            "Internal hinge support",
+            "Point loads, UDL, UVL, and concentrated moments",
+            "Torsional moment loads",
+            "Step-by-step worked solution with KaTeX typesetting",
+            "PDF report export",
+            "SI, kN·m, and Imperial unit systems",
+            "Light and dark theme"
+          ],
+          "screenshot": "https://ourmdssolver.vercel.app/og-image.png"
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <div id="root"></div>
